@@ -9,6 +9,7 @@ import { Mistral } from '@mistralai/mistralai';
 import dotenv from 'dotenv';
 import quizRoutes from './routes/quizRoutes.js';
 import quizProgressRoutes from './routes/quizProgressRoutes.js';
+import createDB from './utils/createDB.js'; // ✅ import it
 
 dotenv.config();
 
@@ -31,8 +32,12 @@ const PORT = process.env.PORT || 5000;
 
 
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => {
+  .then(async () => {
     console.log('MongoDB connected');
+    await createDB(); // 
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
   })
   .catch((err) => console.error('MongoDB connection error:', err));
+
+
+  
