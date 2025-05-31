@@ -147,7 +147,7 @@ Transcript:
 ${transcript}
 `;
 
-    const analysisRes = await client.chat({ 
+    const analysisRes = await client.chat.complete({ 
       model: 'mistral-medium',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
@@ -192,7 +192,7 @@ You are an intelligent AI tutor. Based on the transcript below, generate **5 mul
 Transcript:
 ${transcript}
 `;
-    const analysisRes = await client.chat({ 
+    const analysisRes = await client.chat.complete({ 
       model: "mistral-medium", 
       messages: [
         {
