@@ -100,10 +100,10 @@ async function processAudioAndTranscribe(videoFilePath, audioOutputFilePath) {
   let transcriptResponse;
   try {
     transcriptResponse = await retry(async () => {
-      return await assemblyaiClient.transcribe({
-        audio: fs.createReadStream(audioOutputFilePath), 
-      });
-    }, 3, 3000);
+  return await assemblyaiClient.transcribe({ 
+    audio: fs.createReadStream(audioOutputFilePath), 
+  });
+  }, 3, 3000);
     console.log("AssemblyAI transcription successful.");
   } catch (error) {
     console.error(`AssemblyAI transcription failed after retries: ${error.message}`);
