@@ -12,7 +12,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const { MistralClient } = pkg;
-const client = new MistralClient({ apiKey: process.env.MISTRAL_API_KEY });
+const mistralClient = new MistralClient({ apiKey: process.env.MISTRAL_API_KEY });
 
 const assemblyaiClient = new AssemblyAI({
   apiKey: process.env.ASSEMBLYAI_API_KEY, 
@@ -147,7 +147,7 @@ Transcript:
 ${transcript}
 `;
 
-    const analysisRes = await client.chat.complete({ 
+    const analysisRes = await mistralClient.chat({ 
       model: 'mistral-medium',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
@@ -192,7 +192,7 @@ You are an intelligent AI tutor. Based on the transcript below, generate **5 mul
 Transcript:
 ${transcript}
 `;
-    const analysisRes = await client.chat.complete({ 
+    const analysisRes = await mistralClient.chat({ 
       model: "mistral-medium", 
       messages: [
         {
