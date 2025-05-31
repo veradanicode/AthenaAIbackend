@@ -3,14 +3,14 @@ import path from 'path';
 import https from 'https';
 import http from 'http';
 import ffmpeg from 'fluent-ffmpeg';
-import { OpenAI } from 'openai';
+import { Mistral } from '@mistralai/mistralai';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import youtubedl from 'yt-dlp-exec';
 import dotenv from "dotenv";
 dotenv.config();
 
-const openai = new OpenAI({ 
+const openai = new Mistral({ 
   apiKey: process.env.MISTRAL_API_KEY ,
   timeout: 30000,
 });
