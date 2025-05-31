@@ -20,10 +20,7 @@ const assemblyaiClient = new AssemblyAI({
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// IMPORTANT: This path is for Windows executable.
-// On Render (Linux), `yt-dlp` needs to be installed as a system binary.
-// If installed correctly, `yt-dlp-exec` should find it in PATH, or you can specify:
-// const ytDlpPath = '/usr/local/bin/yt-dlp'; // Example path if installed via build.sh
+
 const ytDlpPath = path.resolve('./node_modules/youtube-dl-exec/bin/yt-dlp'); // Changed .exe to assume Linux binary if present
 
 async function downloadYoutubeVideo(url, dest) {
@@ -34,8 +31,7 @@ async function downloadYoutubeVideo(url, dest) {
       noCheckCertificates: true,
       noWarnings: true,
       preferFreeFormats: true,
-      // If yt-dlp is installed to a specific path on Render, you might need:
-      // binary: '/usr/local/bin/yt-dlp', // Example for Linux installation
+      
     });
     console.log(`Successfully downloaded YouTube video to ${dest}`);
   } catch (error) {
@@ -104,7 +100,7 @@ async function processAudioAndTranscribe(videoFilePath, audioOutputFilePath) {
   let transcriptResponse;
   try {
     transcriptResponse = await retry(async () => {
-      return await assemblyaiClient.transcripts.transcribe({
+      return awaitassemblyaiClient.transcribe({
         audio_url: fs.createReadStream(audioOutputFilePath), 
       });
     }, 3, 3000);
@@ -218,6 +214,7 @@ ${transcript}
 `;
 
     const summaryRes = await mistralClient.chat({
+      model: "mistral-medium",
       messages: [{ role: "user", content: summaryPrompt }],
       temperature: 0.5,
     });
