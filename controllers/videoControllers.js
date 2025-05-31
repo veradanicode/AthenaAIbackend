@@ -3,119 +3,143 @@ import path from 'path';
 import https from 'https';
 import http from 'http';
 import ffmpeg from 'fluent-ffmpeg';
-import { Mistral } from '@mistralai/mistralai';
+import { MistralClient } from '@mistralai/mistralai'; 
+import { AssemblyAI } from 'assemblyai';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import youtubedl from 'yt-dlp-exec';
 import dotenv from "dotenv";
 dotenv.config();
 
-const openai = new Mistral({ 
-  apiKey: process.env.MISTRAL_API_KEY ,
-  timeout: 30000,
+const mistralClient = new MistralClient(process.env.MISTRAL_API_KEY); 
+
+const assemblyaiClient = new AssemblyAI({
+  apiKey: process.env.ASSEMBLYAI_API_KEY, 
 });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const ytDlpPath = path.resolve('./node_modules/youtube-dl-exec/bin/yt-dlp.exe');
+// IMPORTANT: This path is for Windows executable.
+// On Render (Linux), `yt-dlp` needs to be installed as a system binary.
+// If installed correctly, `yt-dlp-exec` should find it in PATH, or you can specify:
+// const ytDlpPath = '/usr/local/bin/yt-dlp'; // Example path if installed via build.sh
+const ytDlpPath = path.resolve('./node_modules/youtube-dl-exec/bin/yt-dlp'); // Changed .exe to assume Linux binary if present
 
 async function downloadYoutubeVideo(url, dest) {
-  await youtubedl(url, {
-    output: dest,
-    noCheckCertificates: true,
-    noWarnings: true,
-    preferFreeFormats: true,
-  });
+  console.log(`Attempting to download YouTube video from ${url} to ${dest}`);
+  try {
+    await youtubedl(url, {
+      output: dest,
+      noCheckCertificates: true,
+      noWarnings: true,
+      preferFreeFormats: true,
+      // If yt-dlp is installed to a specific path on Render, you might need:
+      // binary: '/usr/local/bin/yt-dlp', // Example for Linux installation
+    });
+    console.log(`Successfully downloaded YouTube video to ${dest}`);
+  } catch (error) {
+    console.error(`Error in downloadYoutubeVideo for ${url}:`, error.message);
+    throw new Error(`YouTube download failed: ${error.message}. Ensure yt-dlp is installed and accessible.`);
+  }
 }
 
-
 async function downloadVideo(url, dest) {
+  console.log(`Attempting to download video from ${url} to ${dest}`);
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(dest);
     const protocol = url.startsWith('https') ? https : http;
 
     protocol.get(url, (response) => {
       if (response.statusCode !== 200) {
-        return reject(new Error(`Failed to get '${url}' (${response.statusCode})`));
+        fs.unlink(dest, () => reject(new Error(`Failed to get '${url}' (${response.statusCode})`)));
+        return;
       }
       response.pipe(file);
       file.on('finish', () => {
-        file.close(resolve);
+        file.close(() => {
+          console.log(`Successfully downloaded video to ${dest}`);
+          resolve();
+        });
       });
     }).on('error', (err) => {
-      fs.unlink(dest, () => reject(err));
+      fs.unlink(dest, () => reject(new Error(`Download failed for '${url}': ${err.message}`)));
     });
-    
   });
 }
 
 // Retry wrapper
 async function retry(fn, retries = 3, delay = 2000) {
-  try {
-    return await fn();
-  } catch (err) {
-    if (retries > 0) {
-      console.warn(`Retrying... (${retries} attempts left)`);
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      console.warn(`Attempt ${i + 1}/${retries} failed: ${err.message}`);
+      if (i === retries - 1) throw err; 
       await new Promise(resolve => setTimeout(resolve, delay));
-      return retry(fn, retries - 1, delay);
-    } else {
-      throw err;
     }
   }
 }
+
+
+
+async function processAudioAndTranscribe(videoFilePath, audioOutputFilePath) {
+  console.log(`Extracting audio from ${videoFilePath} to ${audioOutputFilePath}`);
+  await new Promise((resolve, reject) => {
+    ffmpeg(videoFilePath)
+      .noVideo()
+      .audioCodec('libmp3lame')
+      .save(audioOutputFilePath)
+      .on('end', () => {
+        console.log('Audio extraction complete.');
+        resolve();
+      })
+      .on('error', (err) => {
+        console.error('FFmpeg error during audio extraction:', err);
+        reject(new Error(`FFmpeg audio extraction failed: ${err.message}. Ensure ffmpeg is installed and accessible.`));
+      });
+  });
+
+  console.log("Starting audio transcription with AssemblyAI...");
+  let transcriptResponse;
+  try {
+    transcriptResponse = await retry(async () => {
+      return await assemblyaiClient.transcripts.transcribe({
+        audio_url: fs.createReadStream(audioOutputFilePath), 
+      });
+    }, 3, 3000);
+    console.log("AssemblyAI transcription successful.");
+  } catch (error) {
+    console.error(`AssemblyAI transcription failed after retries: ${error.message}`);
+    throw new Error(`Transcription failed: ${error.message}`);
+  }
+
+  return transcriptResponse.text;
+}
+
 
 export const analyzeVideoUrl = async (req, res) => {
   const { videoUrl } = req.body;
   if (!videoUrl) {
     return res.status(400).json({ message: "No video URL provided" });
   }
+
   
-  // Define these paths at the start of the function scope
   const videoPath = path.join(__dirname, 'temp_video.mp4');
   const audioPath = path.join(__dirname, 'temp_audio.mp3');
 
   try {
-     // 1. Download video file from URL
-    console.log("Downloading video from:", videoUrl);
-      const isYoutubeUrl = (url) => /^(https?\:\/\/)?(www\.youtube\.com|youtu\.?be)\/.+$/.test(url);
+    const isYoutubeUrl = (url) => /^(https?\:\/\/)?(www\.youtube\.com|youtu\.?be)\/.+$/.test(url);
 
-      if (isYoutubeUrl(videoUrl)) {
-        try {
-          console.log('Detected YouTube URL. Downloading with youtube-dl-exec.');
-          await downloadYoutubeVideo(videoUrl, videoPath);
-        } catch (error) {
-          console.error('Failed to download YouTube video:', error.message);
-          return res.status(500).json({ message: 'YouTube download failed', error: error.message });
-        }
-      } else {
-        console.log('Downloading direct video file URL.');
-        await downloadVideo(videoUrl, videoPath);
-      }
+    if (isYoutubeUrl(videoUrl)) {
+      await downloadYoutubeVideo(videoUrl, videoPath);
+    } else {
+      await downloadVideo(videoUrl, videoPath);
+    }
 
-
-
-
-    // 2. Extract audio as mp3 using ffmpeg
-    await new Promise((resolve, reject) => {
-      ffmpeg(videoPath)
-        .noVideo()
-        .audioCodec('libmp3lame')
-        .save(audioPath)
-        .on('end', resolve)
-        .on('error', reject);
-    });
-
-    // 3. Transcribe audio with OpenAI Whisper
-    const transcriptRes = await openai.audio.transcriptions.create({
-      file: fs.createReadStream(audioPath),
-      model: 'whisper-1',
-    });
-
-    const transcript = transcriptRes.text;
+    const transcript = await processAudioAndTranscribe(videoPath, audioPath);
     console.log('Transcript:', transcript);
 
-    // 4. Generate quiz questions + summary from transcript using GPT-4
     const prompt = `
 You are an expert tutor. Based on the transcript below, generate:
 
@@ -126,122 +150,102 @@ Transcript:
 ${transcript}
 `;
 
-    const analysisRes = await openai.chat.completions.create({
-      model: 'gpt-4',
+    const analysisRes = await mistralClient.chat({ 
+      model: 'mistral-medium',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
     });
 
     const result = analysisRes.choices[0].message.content;
+    console.log('Mistral AI analysis successful.');
 
-    // 5. Send back the result (quiz + summary)
     res.json({ result });
 
-    
- 
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Error analyzing video URL", error: error.message });
-  }finally {
-    // Cleanup temp files if exist
+    console.error('Error in analyzeVideoUrl:', error); 
+    res.status(500).json({ message: 'Failed to process video from URL', error: error.message });
+  } finally {
+    
     [videoPath, audioPath].forEach((file) => {
-      if (fs.existsSync(file)) fs.unlinkSync(file);
+      if (fs.existsSync(file)) {
+        try {
+          fs.unlinkSync(file);
+          console.log(`Cleaned up ${file}`);
+        } catch (unlinkError) {
+          console.error(`Failed to unlink ${file}:`, unlinkError.message);
+        }
+      }
     });
   }
 };
-
 
 
 export const analyzeVideo = async (req, res) => {
   const videoPath = req.file.path;
   const audioPath = videoPath.replace(path.extname(videoPath), '.mp3');
 
-  ffmpeg(videoPath)
-    .output(audioPath)
-    .on('end', async () => {
-      try {
-        // Step 2: Transcribe with retry
-    const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
-let transcriptRes;
-let attempts = 3;
-
-while (attempts > 0) {
   try {
-    transcriptRes = await openai.audio.transcriptions.create({
-      file: fs.createReadStream(audioPath),
-      model: 'whisper-1',
-    });
-    break; // success, exit the loop
-  } catch (error) {
-    console.error(`Attempt failed: ${error.message}`);
-    attempts--;
-    if (attempts === 0) throw error;
-    await delay(3000); // wait before retry
-  }
-}
+    const transcript = await processAudioAndTranscribe(videoPath, audioPath);
+    console.log('Transcript:', transcript);
 
-
-        const transcript = transcriptRes.text;
-        // Step 3: GPT Analysis with retry
-const prompt = `
+    //  Mistral Chat Analysis for Quiz Questions
+    const prompt = `
 You are an intelligent AI tutor. Based on the transcript below, generate **5 multiple-choice quiz questions** to test a student's understanding of the content. Each question should have 4 options (A, B, C, D), and the correct answer should be clearly marked.
 
 Transcript:
 ${transcript}
 `;
-        const analysisRes = await openai.chat.completions.create({
-        model: "gpt-4", // or "gpt-3.5-turbo"
-        messages: [
-          {
-            role: "user",
-            content: `Generate 5 beginner-level quiz questions based on the following transcript. Include one correct answer for each.\n\nTranscript:\n${transcriptRes.text}`,
-          },
-        ],
-        temperature: 0.7,
-      });
+    const analysisRes = await mistralClient.chat({ 
+      model: "mistral-medium", 
+      messages: [
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      temperature: 0.7,
+    });
 
-      const questions = analysisRes.choices[0].message.content;
-      console.log('Generated questions:', questions);
+    const questions = analysisRes.choices[0].message.content;
+    console.log('Generated questions:', questions);
 
-
-const summaryPrompt = `
+    //  Mistral Chat Analysis for Summary
+    const summaryPrompt = `
 You are an expert summarizer. Based on the transcript below, generate a **brief summary** that captures all the important points clearly and concisely.
 
 Transcript:
 ${transcript}
 `;
 
-const summaryRes = await openai.chat.completions.create({
-  model: "gpt-4", // or "gpt-3.5-turbo"
-  messages: [
-    {
-      role: "user",
-      content: summaryPrompt,
-    },
-  ],
-  temperature: 0.5,
-});
+    const summaryRes = await mistralClient.chat({
+      messages: [{ role: "user", content: summaryPrompt }],
+      temperature: 0.5,
+    });
 
-const summary = summaryRes.choices[0].message.content;
+    const summary = summaryRes.choices[0].message.content;
+    console.log('Generated summary:', summary);
 
- res.json({
-          questions,
-          summary
-        });
-        fs.unlinkSync(videoPath);
-        fs.unlinkSync(audioPath);
+    res.json({
+      questions,
+      summary
+    });
 
-      } catch (err) {
-        console.error('Analysis error:', err);
-        res.status(500).json({
-          message: 'Error analyzing video',
-          error: err.message || err,
-        });
+  } catch (err) {
+    console.error('Error in analyzeVideo (file upload):', err);
+    res.status(500).json({
+      message: 'Error analyzing video file',
+      error: err.message || err,
+    });
+  } finally {
+    [videoPath, audioPath].forEach((file) => {
+      if (fs.existsSync(file)) {
+        try {
+          fs.unlinkSync(file);
+          console.log(`Cleaned up ${file}`);
+        } catch (unlinkError) {
+          console.error(`Failed to unlink ${file}:`, unlinkError.message);
+        }
       }
-    })
-    .on('error', (err) => {
-      console.error('FFmpeg error:', err);
-      res.status(500).json({ message: 'Error processing video file' });
-    })
-    .run();
+    });
+  }
 };
