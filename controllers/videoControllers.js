@@ -100,7 +100,7 @@ async function processAudioAndTranscribe(videoFilePath, audioOutputFilePath) {
   let transcriptResponse;
   try {
     transcriptResponse = await retry(async () => {
-  return await assemblyaiClient.transcribe({ 
+  return await assemblyaiClient.transcripts.transcribe({ 
     audio: fs.createReadStream(audioOutputFilePath), 
   });
   }, 3, 3000);
