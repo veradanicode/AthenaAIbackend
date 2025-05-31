@@ -3,7 +3,7 @@ import path from 'path';
 import https from 'https';
 import http from 'http';
 import ffmpeg from 'fluent-ffmpeg';
-import MistralClient from '@mistralai/mistralai'; 
+import { Mistral} from '@mistralai/mistralai'; 
 import { AssemblyAI } from 'assemblyai';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -11,7 +11,7 @@ import youtubedl from 'yt-dlp-exec';
 import dotenv from "dotenv";
 dotenv.config();
 
-const mistralClient = new MistralClient(process.env.MISTRAL_API_KEY); 
+const client = new Mistral({ apiKey: process.env.MISTRAL_API_KEY });
 
 const assemblyaiClient = new AssemblyAI({
   apiKey: process.env.ASSEMBLYAI_API_KEY, 
@@ -100,7 +100,7 @@ async function processAudioAndTranscribe(videoFilePath, audioOutputFilePath) {
   let transcriptResponse;
   try {
     transcriptResponse = await retry(async () => {
-      return awaitassemblyaiClient.transcribe({
+      return await assemblyaiClient.transcribe({
         audio: fs.createReadStream(audioOutputFilePath), 
       });
     }, 3, 3000);
