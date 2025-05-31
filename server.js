@@ -24,7 +24,6 @@ app.use('/api/quiz/progress', quizProgressRoutes);
 // Routes
 app.use('/api/video', videoRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/users', loginRoute);    
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/documents', quizRoutes);
 
