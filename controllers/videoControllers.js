@@ -21,7 +21,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 
-const ytDlpPath = path.resolve('./node_modules/youtube-dl-exec/bin/yt-dlp'); // Changed .exe to assume Linux binary if present
+const ytDlpPath = path.resolve('./node_modules/youtube-dl-exec/bin/yt-dlp'); 
 
 async function downloadYoutubeVideo(url, dest) {
   console.log(`Attempting to download YouTube video from ${url} to ${dest}`);
@@ -146,7 +146,7 @@ Transcript:
 ${transcript}
 `;
 
-    const analysisRes = await mistralClient.chat({ 
+    const analysisRes = await client.chat({ 
       model: 'mistral-medium',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
@@ -191,7 +191,7 @@ You are an intelligent AI tutor. Based on the transcript below, generate **5 mul
 Transcript:
 ${transcript}
 `;
-    const analysisRes = await mistralClient.chat({ 
+    const analysisRes = await client.chat({ 
       model: "mistral-medium", 
       messages: [
         {
