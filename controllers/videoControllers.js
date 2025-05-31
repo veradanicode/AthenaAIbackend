@@ -101,7 +101,7 @@ async function processAudioAndTranscribe(videoFilePath, audioOutputFilePath) {
   try {
     transcriptResponse = await retry(async () => {
       return awaitassemblyaiClient.transcribe({
-        audio_url: fs.createReadStream(audioOutputFilePath), 
+        audio: fs.createReadStream(audioOutputFilePath), 
       });
     }, 3, 3000);
     console.log("AssemblyAI transcription successful.");
