@@ -10,7 +10,7 @@ import youtubedl from 'yt-dlp-exec';
 import dotenv from "dotenv";
 dotenv.config();
 
-import { MistralClient } from '@mistralai/mistralai';
+const { MistralClient } = require('@mistralai/mistralai');
 const mistralClient = new MistralClient({ apiKey: process.env.MISTRAL_API_KEY });
 
 const assemblyaiClient = new AssemblyAI({
