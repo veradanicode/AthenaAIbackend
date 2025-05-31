@@ -3,13 +3,14 @@ import path from 'path';
 import https from 'https';
 import http from 'http';
 import ffmpeg from 'fluent-ffmpeg';
-import { MistralClient } from '@mistralai/mistralai';
+import pkg from '@mistralai/mistralai';
 import { AssemblyAI } from 'assemblyai';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import youtubedl from 'yt-dlp-exec';
 import dotenv from "dotenv";
 dotenv.config();
+const { MistralClient } = pkg;
 
 const mistralClient = new MistralClient({ apiKey: process.env.MISTRAL_API_KEY });
 
