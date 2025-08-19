@@ -1,4 +1,4 @@
-// routes/auth/login.js
+
 import express from 'express';
 import User from '../models/User.js'; // add .js extension in ESM
 import bcrypt from 'bcryptjs';

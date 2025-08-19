@@ -8,7 +8,6 @@ dotenv.config();
 const client = new Mistral({ apiKey: process.env.MISTRAL_API_KEY });
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-console.log("API Key:", process.env.MISTRAL_API_KEY.trim());
 
 export const uploadDocumentAndGenerateQuiz = async (req, res) => {
   try {
