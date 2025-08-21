@@ -18,12 +18,12 @@ const app = express();
 // Middleware
 app.use(express.json());  
 app.use(cors());          
-app.use('/uploads', express.static('uploads'));
-app.use('/api/quiz/progress', quizProgressRoutes);
 
 // Routes
 app.use('/api/video', videoRoutes);
 app.use('/api/users', userRoutes);
+app.use('/uploads', express.static('uploads'));
+app.use('/api/quiz/progress', quizProgressRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/documents', quizRoutes);
 
