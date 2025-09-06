@@ -7,7 +7,7 @@ import { OpenAI } from 'openai';
 import { Mistral } from '@mistralai/mistralai';
 import quizRoutes from './routes/quizRoutes.js';
 import quizProgressRoutes from './routes/quizProgressRoutes.js';
-import {connectToDB} from './database/db.js';
+import connectToDB from './database/db.js';
 
 dotenv.config();
 
