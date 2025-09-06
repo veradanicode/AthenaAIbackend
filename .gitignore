@@ -10,6 +10,7 @@ node_modules/
 # Ignore build output
 dist/
 build/
+uploads/
 
 # Ignore log files
 *.log
