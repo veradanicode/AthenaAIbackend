@@ -1,7 +1,7 @@
 import express from 'express';
-const router = express.Router();
-const {registerUser,loginUser}=require('../controllers/auth-controller');
-const authMiddleware =require('../middleware/auth')
+import router from  express.Router();
+import {registerUser,loginUser} from '../controllers/auth-controller';
+import authMiddleware from '../middleware/auth'
 
 // routes
 router.post('/register', registerUser);

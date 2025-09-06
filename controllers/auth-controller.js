@@ -1,9 +1,9 @@
-const { genSalt } = require('bcryptjs');
-const User =require('../models/User')
-const jwt=require('jsonwebtoken')
+import { genSalt } from 'bcryptjs';
+import  User from '../models/User';
+import  jwt from  'jsonwebtoken';
 
 //register a user
-const registerUser =async(req,res)=>{
+export const registerUser =async(req,res)=>{
     try {
         const {name,email,password}=req.body;
 
@@ -40,7 +40,7 @@ const registerUser =async(req,res)=>{
     }
 }
 //login a user
-const loginUser =async(req,res)=>{
+export const loginUser =async(req,res)=>{
     try {
         const {email,password}=req.body;
 
@@ -68,7 +68,3 @@ const loginUser =async(req,res)=>{
     }
 }
 
-module.exports={
-    registerUser,
-    loginUser
-}
