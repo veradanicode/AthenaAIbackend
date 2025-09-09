@@ -1,5 +1,5 @@
 import { genSalt } from 'bcryptjs';
-import  User from '../models/User';
+import  User from '../models/User.js';
 import  jwt from  'jsonwebtoken';
 
 //register a user
